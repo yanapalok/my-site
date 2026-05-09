@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PetStop Map</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+   <link rel="stylesheet" href="map1.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css"/>
+
+</head>
+<body>
+
+<!-- NAV -->
+<header>
+  <div class="container">
+    <div class="logo">
+      <img src="logo.png" alt="logo">
+      <h2>PetStop Map</h2>
+    </div>
+    <nav class="menu">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="map1.html">Explore Map</a></li>
+        <li><a href="about.html">About</a></li>
+      </ul>
+    </nav>
+    <button class="btn btn-green">Get Started</button>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-top">
+      <div class="search-wrap">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+        </svg>
+        <input type="text" id="searchInput" placeholder="Search locations..." oninput="filterCards()"/>
+      </div>
+      <div class="filters" id="filters">
+        <button class="filter-btn active" data-type="all" onclick="setFilter('all', this)">
+          <span class="dot" style="background:#2e7d32"></span> All
+        </button>
+        <button class="filter-btn" data-type="hotel" onclick="setFilter('hotel', this)">
+          <span class="dot" style="background:#1565c0"></span> Hotels
+        </button>
+        <button class="filter-btn" data-type="cafe" onclick="setFilter('cafe', this)">
+          <span class="dot" style="background:#e65100"></span> Cafes
+        </button>
+        <button class="filter-btn" data-type="restaurant" onclick="setFilter('restaurant', this)">
+          <span class="dot" style="background:#b71c1c"></span> Restaurants
+        </button>
+        <button class="filter-btn" data-type="petstore" onclick="setFilter('petstore', this)">
+          <span class="dot" style="background:#6a1b9a"></span> Petstore
+        </button>
+        <button class="filter-btn" data-type="vet" onclick="setFilter('vet', this)">
+          <span class="dot" style="background:#00695c"></span> Vets
+        </button>
+        <button class="filter-btn" data-type="park" onclick="setFilter('park', this)">
+          <span class="dot" style="background:#33691e"></span> Parks
+        </button>
+      </div>
+    </div>
+    <div class="results-count">Found <span id="countDisplay">8</span> locations</div>
+    <div class="cards-list" id="cardsList"></div>
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-title">Нічого не знайдено</div>
+      <div class="empty-text">
+        Схоже, тут ще нема pet-friendly місць.<br>
+        Спробуй інший запит!
+      </div>
+      <div class="empty-query" id="emptyQuery"></div>
+      <button class="clear-btn" onclick="clearSearch()">Очистити пошук</button>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div id="map"></div>
+
+  <!-- DETAIL PANEL -->
+  <div class="detail-panel" id="detailPanel">
+    <button class="detail-close" onclick="closeDetail()" title="Закрити">✕</button>
+    <div id="detailImg"></div>
+    <div class="detail-panel-body" id="detailBody"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getFirestore, collection, addDoc, query, where, orderBy, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  // 🔧 ЗАМІНИ ЦЕ НА СВІЙ КОНФІГ З FIREBASE CONSOLE
+  const firebaseConfig = {
+    apiKey: "AIzaSyASAJJF6axNuETtK19auQUrVdPltCK0bGQ",
+    authDomain: "petstopmap-72132.firebaseapp.com",
+    projectId: "petstopmap-72132",
+    storageBucket: "petstopmap-72132.firebasestorage.app",
+    messagingSenderId: "827989373083",
+    appId: "1:827989373083:web:383aaa49c240124062963e"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  // Робимо db доступним глобально
+  window._firebaseDb         = db;
+  window._fbCollection       = collection;
+  window._fbAddDoc           = addDoc;
+  window._fbQuery            = query;
+  window._fbWhere            = where;
+  window._fbOrderBy          = orderBy;
+  window._fbGetDocs          = getDocs;
+  window._firebaseReady      = true;
+  window.dispatchEvent(new Event('firebaseReady'));
+</script>
+<script>
+// Автоматично визначаємо висоту хедера
+function fixLayout() {
+  const header = document.querySelector('header');
+  const layout = document.querySelector('.layout');
+  if (header && layout) {
+    const h = header.offsetHeight;
+    layout.style.top = h + 'px';
+    layout.style.height = (window.innerHeight - h) + 'px';
+    if (typeof map !== 'undefined') map.invalidateSize();
+  }
+}
+window.addEventListener('load', fixLayout);
+window.addEventListener('resize', fixLayout);
+
+
+const locations = [
+  {
+    id: 1, type: 'hotel', name: 'Paws & Stay Hotel', rating: 4.8,
+    address: '123 Pet Street, San Francisco, CA',
+    price: 'Free for pets under 25 lbs',
+    tags: ['Pet Beds', 'Dog Park', 'Pet Menu'],
+    lat: 37.7749, lng: -122.4194,
+    img: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&q=80'
+  },
+  {
+    id: 2, type: 'cafe', name: 'Barking Bean Cafe', rating: 4.6,
+    address: '45 Woofs Ave, San Francisco, CA',
+    price: 'Dog treats on arrival',
+    tags: ['Outdoor Seating', 'Water Bowls', 'Dog Menu'],
+    lat: 37.7620, lng: -122.4350,
+    img: 'https://images.unsplash.com/photo-1534040385115-33dcb3acba5b?w=400&q=80'
+  },
+  {
+    id: 3, type: 'restaurant', name: 'The Biscuit Table', rating: 4.5,
+    address: '88 Fetch Blvd, San Francisco, CA',
+    price: 'Pets welcome on patio',
+    tags: ['Patio', 'Pet Menu', 'Friendly Staff'],
+    lat: 37.7850, lng: -122.4080,
+    img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=80'
+  },
+  {
+    id: 4, type: 'petstore', name: 'PROFIZOO', rating: 4.7,
+    address: 'вулиця Глибока, 10, Львів, Львівська область, 79000',
+    price: 'Любов до тварин без переплат!',
+    tags: ['Dog-Friendly', 'Nap Zone', 'Snack Bar'],
+    lat: 49.83586912785891,  lng: 24.013241679291877,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGfr3FhHHiJgZ5vZ_PD5rLqvzMCbmPdh8t4vjHrXmA8B96uuHZ-yWx1Zw7mHS1LO1bm-80r_wzMJ3IDmGEozIDiBGAegZxNJPEgZt4BWdDkjy8r1iSkCCTHQ4I2Cpz_rYXw7PH5gg=w408-h272-k-no'
+  },
+  {
+    id: 5, type: 'vet', name: 'Happy Paws Clinic', rating: 4.9,
+    address: '7 Heal Street, San Francisco, CA',
+    price: 'Emergency care 24/7',
+    tags: ['Surgery', 'Dental', 'Vaccines'],
+    lat: 37.7780, lng: -122.4420,
+    img: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&q=80'
+  },
+  {
+    id: 6, type: 'park', name: 'Dolores Leash-Free Park', rating: 4.8,
+    address: 'Dolores Park, San Francisco, CA',
+    price: 'Free entry',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 37.7596, lng: -122.4269,
+    img: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400&q=80'
+  },
+  {
+    id: 7, type: 'hotel', name: 'Snout & Suites', rating: 4.4,
+    address: '301 Woof Way, San Francisco, CA',
+    price: 'Pet fee: $30/night',
+    tags: ['Pet Spa', 'Dog Sitting', 'Grooming'],
+    lat: 37.7900, lng: -122.4150,
+    img: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400&q=80'
+  },
+  {
+    id: 8, type: 'cafe', name: 'Mutt & Brew', rating: 4.3,
+    address: '22 Barkery Lane, San Francisco, CA',
+    price: 'Pup-puccino: free!',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 37.7680, lng: -122.4100,
+    img: 'https://images.unsplash.com/photo-1511920170033-f8396924c348?w=400&q=80'
+  },
+  {
+    id: 9, type: 'hotel', name: 'BarkCamp', rating: 4.7,
+    address: 'BarkCamp, вулиця Євгена Коновальця, 34а ЖК "Аристократ, Київ, 01133',
+    price: 'Pup-puccino: free!',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 50.43082983654447,   lng:30.53224863229625,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEe6vrKJHp-Znaa7pRC0ZzMmxn8sxy1zO-h1v8xlAp39YtU0LWQTyb-y49UbqLk0zhIl4xLdHR5skWnjaG35sTYIKRYuS_jfGSRRfsqUjQaEaLxYYWUdI0hN2O67G2fAvj4d25jhxPjCVkl=w408-h544-k-no'
+  },
+  {
+    id: 10, type: 'park', name: 'Собачий майданчик', rating: 3.0,
+    address: 'вулиця Молодіжна, 40, Івано-Франківськ, Івано-Франківська область, 76000',
+    price: 'Free entry',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 48.926363431449474,  lng: 24.73895612141333,
+    img: 'https://optim.tildacdn.com/tild3235-3762-4833-a138-613635376461/-/resize/710x/-/format/webp/Small_dog_breeds.jpg.webp'
+  }, 
+  {
+    id: 11, type: 'hotel', name: 'Dog care ', rating: 4.6,
+    address: 'вулиця Молодіжна, 40, Івано-Франківськ, Івано-Франківська область, 76000',
+    price: 'Ціна за перебування собаки: від 230 до 23 000 грн',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 48.92752388603934,   lng: 24.737227014436883,
+    img: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400&q=80'
+  }, 
+  {
+    id: 12, type: 'hotel', name: 'Зооотель', rating: 4.4,
+    address: 'вулиця Набережна, 23, Тарасівка, Київська область, 08161',
+    price: 'Pup-puccino: free!',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 50.342531073297465,   lng:30.325263791193663,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEHkdd-vRqAaYQ9fOG7pEUDp_0Mod2y4m7brUzbPLVRIR0wvnRdgZK9AePCTrsiu-E-6Lazf1IDEMZNVssWEi0YZmto4cRmAZdwXpNppC28kRMQ5H-5lfRnlwOuZjykudWc-DB7=w408-h306-k-no'
+  },
+  {
+    id: 13, type: 'hotel', name: 'Catari Cat Hotel', rating: 4.6,
+    address: 'St. 6666, Катар',
+    price: 'Індивідуальний розрахунок вартості',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 25.644656331059988,    lng:51.463263116387125,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAFPiochsSFsxD6lPGYFmkZfUHN2_jXXx91YF9M84RG0kwmKTzRw1duMuJf1KbTdCHef5T4dJHUby5frzPdCG9qU_Eh8cNppqIqd3N4bEtg2awmhT4P_dM563O5LldD1CKAILXyR=w408-h306-k-no'
+  },
+  {
+    id: 14, type: 'hotel', name: 'Barkly', rating: 4.7,
+    address: 'вулиця Михайла Донця, 2a, Київ, 02000',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 50.437349264053104,    lng:30.43080337638918, 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAHl1TEsLqu3qrie9jI8hwW_D7C0J7pAwMq0inh8PpDK7eI2uAwo2Pxrqayu0eZA6nnYgNV9cInjiBhw6MAVLxWXPuUOD_PAmqeOJOelGNElewmVEpgBTeDaoSpmYHX_Nqes6inwaw=w408-h408-k-no'
+  },
+  {
+    id: 15, type: 'hotel', name: 'Зооготель "Cat Hub"', rating: 4.9,
+    address: 'вулиця Боголюбова, 29, Софіївська Борщагівка, Київська область, 08131',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 50.39674040993967,     lng:30.384793929820972 , 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAHqlzMSMs9X7JBEPP-1XP4fHAhIxDrmEVZ-9upeS6KVWB58yvxAE_FMxJVx5b_qdr5OBwffpMBQpjia-h0Yqcywbuhe4SDc6kzQDN7G52qg9My1cQ3KvincaWXtcB4TFfVDnkcqcw=w408-h244-k-no'
+  },
+  {
+    id: 16, type: 'hotel', name: 'Zooparking_odessa', rating: 4.9,
+    address: 'Пересипський узвіз, 1, Одеса, Одеська область, 65000',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 46.507557058076365, lng:30.685164366420004, 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEOaTMpZSm-As2zflovDqKNOsOG_QUpqnHJEhjPJqUnne-R0vD5SH9OD6blo8FacJHXYvszy9B2_M3gV5u6DJhm6PWp3I2emFkI0ajTSkQinwprZvpKnJ1RBIX8HhUNDaTAphf-iw=w408-h306-k-no' 
+  },
+  {
+    id: 17, type: 'hotel', name: 'DOG PALACE', rating: 4.5,
+    address: 'Літакова вулиця, 41А, Одеса, Одеська область, 65000',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 46.47399282096151,  lng:30.65529528798787, 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGlkf6c9OUidN82VV7CILdG5b8s7bgXANcGYohufdMOEo3Nc8xkjtPG6icpRoHasV8qOF8sgJGMGvAEcfV1XZvpbmg5DlvG6qaMAHzp18YxxXyh8luoGxjk2LjBeXYbC4pgOsHd4g=w426-h240-k-no' 
+  },
+  {
+    id: 18, type: 'hotel', name: 'Зооготель «Собача Справа»', rating: 5.0,
+    address: 'Путевая, 5, Затишье, Харківська область, 61000',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 49.959995272980706,   lng:36.43516783691176, 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAG4l3gxRKqL1GLWfsXSOaOpb4PEjXFCiG1UenA5yf9YBVMhUj_asMBPmOU_KInZi3InD3hyKh3uB8gigBVxtIu3MdcgrSnYqZSaxkomh16pa27iNAWoPZY-iV37KltYgb57g1Lp5w=w408-h544-k-no' 
+  },
+  {
+    id: 19, type: 'hotel', name: 'Гостиница для животных Darliss', rating: 5.0,
+    address: 'вул. Богдана Хмельницького, 12, Котлярі, Харківська область, 62491',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 49.92375942765894,    lng:36.28959899489778 , 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEfjsQt30EleT7NLMWtM7x_1gqWaaTjcG3bEU9LHjOdoQaq4ktBP43dJKcb1Owh0L-dlfH8HFNIIYYO6b7NLgfhki1Y49ikAnP8wjCsCg5j36RYzeoHrAFqxZJWg8sy5U0TzmvK=w426-h240-k-no' 
+  },
+  {
+    id: 20, type: 'hotel', name: 'Дай лапу, друже', rating: 4.2,
+    address: 'вулиця Незалежної України, Запоріжжя, Запорізька область, 69061',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 47.867293782900816,     lng:35.11120467439299 , 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGWOYX8H0n6WgAJTjM6z-gUWL9tFJKpKaspA3XrU7VTLl1BOwO5V10BXgbHlnIIIGgzUyZ5KI57bvvt4lbGyKvSES1jvLX6NnX36spov9E8gL6B7Btqxp4FU7Bdj0YIf6w6hX2QNQ=w408-h544-k-no' 
+  },
+  {
+    id: 21, type: 'hotel', name: 'Zooworld Pet Hotel', rating: 4.3,
+    address: 'Калічанська пл., Вінниця, Вінницька область, 21000',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 49.25040692129376,      lng:28.452550255010127, 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEeY1Kbm_KzYrm_qL_3PY7PwW6jHc5HwTafy__mtodohUoFRApyp3zxtQk4d1v3hG85DcvysfOhRMJ9g4xMgwzk1W2xShwbyx2uqif4OTxTFQvLvot-SpBQyCIAKkV-tSK5k55A-UAFZ4SB=w408-h544-k-no' 
+  },
+  {
+    id: 22, type: 'hotel', name: 'AnimalsHotel', rating: 5.0,
+    address: 'вул. Петра Наріжного, 18 вулиця, Дніпро, Дніпропетровська область, 49000',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 48.49696076980512,       lng:34.899394926020655, 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEddR2fhrkkv06X3iikQ6SOqLs_OwcU-63SGmy686dCzm9QRgMcfXYc5tNeG8-T3Fnd4jcHopTOfn42ya_3Ue6qNSvRPUgIBzns6tDA-3ey3QgdfyTPHzVB-0sIBiLyP4_FpwRH6Ej4SbxW=w408-h307-k-no' 
+  },
+  {
+    id: 23, type: 'hotel', name: 'Hotel pre psov', rating: 5.0,
+    address: 'Nálepkova 302, 900 46 Most pri Bratislave, Словаччина',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 48.147022985305775,        lng:17.27886934556592, 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEbadfb3snN4rWcURL1Yj9sbqByAbw3mJaXzlJgOnKcDzyjLIdKTviQuffjfGTCrRvCDNuwPNWYb1NQXIwFTjPaOUCE4_BsqBASzA4BfHeml5cwIK-rVeWD9Pc5ie625KBzAQs=w493-h240-k-no' 
+  },
+  {
+    id: 24, type: 'hotel', name: 'Relaxační penzion pro psy Lucky', rating: 5.0,
+    address: 'Praha5 CZ, Na Dolnici 20, 155 00 Praha 13, Чехія',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 50.071374898396115,         lng:14.326864289143979, 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEWMd7JwLzx-8TTqHhqfM7rigcrVc4g1W1O_FWZ5SIXCmerJR46clSqq12_vTFkrGn6MmEA9nfw-BvqU8JAQ4laVSsslHRdG4UUPMg2NhWKs5_15KggYJSTs-Akk_AiyjuO6mCdxw=w408-h544-k-no' 
+  },
+  {
+    id: 25, type: 'hotel', name: 'Domowy hotel dla zwierząt-Animal Village', rating: 5.0,
+    address: 'Niedźwiedź, Słomniki 155, 32-090 Kraków, Польща',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 50.89852792358796,          lng:20.084462608943472, 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAH4U013F9dQIojRh6c5YdkChN4XaiScJFK0oRTPiShUNs5SDK5ACyh-gG0reVj-KPxaf_5sM3KJT_X3WNH4EPiVsvkCzE4hbpWHsE_0dXUZMVkeZuHccUh-Y-KD84_BtM1cGWRI=w408-h544-k-no' 
+  },
+  {
+    id: 26, type: 'hotel', name: 'Katzenhotel Ermitage Küsnacht', rating: 4.7,
+    address: 'Wangen 42, 8127 Küsnacht, Швейцарія',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 50.59499706718878,           lng:7.885925781217372, 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAFpbTrOr9aCrgcVP2Ap3IPW97KIfAQn6O4bwtQ_BgyQimm3FrRzPZf4ou2wS0eFBUPKY0kY5JB6vN-bOFuYXA2QyRvybDAzBAoQZ4bysteClkvbDXB30y0xXPpH3K1S8KzmeGQ0_g=w408-h612-k-no' 
+  },
+  {
+    id: 27, type: 'hotel', name: 'G&G Pet Resort', rating: 4.4,
+    address: 'Rte des Channes 19, 1076 Ferlens, Швейцарія',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 46.617514919100095,            lng:6.790223445027138, 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAFBW5BGTu8kjEPytvtJOD65SfmtsAg3L4ct9Z5XYq1YuYawSInH2pcOB-oGpDFH6awUUx2oE9Ez6mZwokgbXBeSMmz2eMfOuB0bFLuYRNaxleuIbeC3QTGTcY0XkSXiuKhcsYuK8w=w408-h271-k-no' 
+  },
+  {
+    id: 28, type: 'hotel', name: 'Elmtree Canine Retreat', rating: 4.8,
+    address: 'Sewardstone Rd, Waltham Abbey EN9 3QF, Велика Британія',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 51.67168068643415,             lng:0.003668483496398105, 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEIAgpvIGzVrriORIrRfJea0dAFkR5su5732hb2aZ4AL0DZ4HsZHbsf8Sxp25Ep0VUUXrwVNFKDG1l_WUrXUK8lK7PX33wh9yE9WZXLneGX_IXi5TxBBA-F8cdmrJawvAIsr7W5UeWIs-I=w408-h544-k-no' 
+  },
+  {
+    id: 29, type: 'hotel', name: 'Churchwoods Pet Hotel & Daycare', rating: 4.8,
+    address: '80 318th Rd - Al Qouz Ind.first - Al Quoz - Dubai - Обʼєднані Арабські Емірати',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 25.13989842480078,              lng:55.23554514965553, 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGeaPMdZrn-Y32faHhoV191s8R_67NE7fMz5l0W6yEC2VVOEWzPonBwGgQq9PPJJ_ln_Denl409yA-Qyj83N5veWv8LzKzGp_HSYiwNQGXhxpNxqyDZrKLS7eBmxI7R4rLy-Nk=w425-h240-k-no' 
+  },
+  {
+    id: 30, type: 'hotel', name: 'My Second Home Dubai-DIP', rating: 4.6,
+    address: 'Plot No 597-631, Street 29, Dubai Investment Park - 2 - Dubai - Обʼєднані Арабські Емірати',
+    price: 'Вартість уточнюється',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 25.014489657098792,               lng:55.18646132859752, 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAHNI22r5EA3sJdzFRtPkN8kJVijibydfT7mqFls9P9AfKfAJ7mGzbXuJ0EKw_QHogJO2wicxTK1tzDYfZm9iK2hcuxDi5_JCNdK32EJ0sa_t_etrlOr8zH8CZFl9AFtPg823UWVpw=w408-h306-k-no' 
+  },
+  {
+    id: 31, type: 'petstore', name: 'Зоомаркет MasterZoo', rating: 4.8,
+    address: 'вулиця Гарматна, 26/2, Київ, 02000',
+    price: 'Любов до тварин без переплат!',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 50.44807638580962,  lng: 30.432718059167318,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAFyGLE2Yrklf1v9iQDDSpjCScGaT3gawD8K97OCG01Zb3wbY1Muik-FVn-Pyyqmlv1JIjSSuZvS9dpdL3SksUbCK9qzbTBWxJYRUZHJWMeg7OFZ_FfyPET9-N7aDXPXWf0Jo-N9=w408-h544-k-no'
+  },
+  {
+    id: 32, type: 'petstore', name: 'ЗООМАГАЗИН ANIMAL KINGDOM SHOP', rating: 4.8,
+    address: 'вулиця Олександра Довженка, 1, Київ, 03057',
+    price: 'Любов до тварин без переплат!',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 50.458243162937265,   lng: 30.446563215003245,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAHKRt1_yzph5T8BZzZILwnqyOFFhHLKdrbrgoe_abX1H3x73-AoqffOuC4fhpaLs05o9vaYZv6R2bZ6cJXGED6YYLoP8BT9vin7-_JNhryqVLAvJdLCUfvTGmJmKpyFhNWtBTc=w408-h306-k-no'
+  },
+  {
+    id: 33, type: 'petstore', name: 'Animal boutique', rating: 4.9,
+    address: 'вулиця Шевченка, 31Б, Львів, Львівська область, 79000',
+    price: 'Любов до тварин без переплат!',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 49.84639615726108,    lng: 24.00690280582212,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGwbnyZaXLGlJh3WNvfvlRB54atl9H76y8zBs4CTT7tbUhm-x6QTOr9f-e0cfzWnNNz3g-YxJlhNvv7hDR8u0paNZQ28PekNyTw0ZeJcI_f1cNwD6azGgn-Wlpi42xLy6Grui57=w408-h506-k-no'
+  },
+  {
+    id: 34, type: 'petstore', name: 'АкваЗоо', rating: 4.5,
+    address: 'вулиця Павлова, 15, Дніпро, Дніпропетровська область, 49000',
+    price: 'Любов до тварин без переплат!',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 48.48370677643397,     lng: 35.00589882527024,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAH_1CPSY8m5oOrCFrXGzzLbe9q6njXCHO8qmAjQN_j6eDKD8jvRkJb9uO0ZXUK-rSDFsHbR3PXvpnLfxc0DyJ_2BxUtw8KAr5zka4AbsSbKL4XEtzJ-G0axJ_6z85ew0XTvrcc0=w408-h544-k-no'
+  },
+  {
+    id: 35, type: 'petstore', name: 'Зоомагазин Фунтик', rating: 4.7,
+    address: 'вулиця Сталеварів, 15, Запоріжжя, Запорізька область, 69000',
+    price: 'Любов до тварин без переплат!',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 47.847588684461684,      lng: 35.12423466853317,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAExmuZUfKY2ncotRSCtM6bv9ComIHcWyyyr7JH91wz8Kmoi1TxzunZPa-QcNVkeirty7UmAeCOUAwwRk1oM-UqGhQ4pMvdQJquJjuGwiCaBAdGNR_xJNYPNDC-4tsr9SYSd6WQ=w408-h741-k-no'
+  },
+  {
+    id: 36, type: 'petstore', name: 'Зоомагазин «Мохнатик»', rating: 4.8,
+    address: 'вулиця Миколи Оводова, 57, Вінниця, Вінницька область, 21000',
+    price: 'Любов до тварин без переплат!',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 49.23315015973952,       lng: 28.46926572946487,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAES6wCxsVOnRX2ZLd7YAnOJ-f0ttqyzXAnDgcEreE23UuirOs2sBjP_MOtu0GNbFB9k8m1LXn7Ej9vJ8gbD0FAujD1K-RVjCv6GFNgHaBbbTaIo-s-M3gh7k4fCPoYYs2QflTjQUIQzNLxL=w408-h725-k-no'
+  },
+  {
+    id: 37, type: 'petstore', name: 'Exoterium Pet Shop', rating: 4.8,
+    address: 'Budapest, Nagy Lajos király útja 183, 1142 Угорщина',
+    price: 'Любов до тварин без переплат!',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 47.58677433643178,        lng: 19.077814136709918,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGfbq9wi0sqhJAOzZ65pQlTPc28RFuOKYI_ZNGOVzl7tRvXJQKMaWHRDASnktPs6C4TaXPsJMihaonoC7QzTmEj3PsOaF5wyyEuWag7Ne2kDCF1GJ_Do3ICD11BRyqj4Z4YIzXs=w408-h374-k-no'
+  },
+  {
+    id: 38, type: 'petstore', name: 'Kölle Zoo Brunn am Gebirge', rating: 4.5,
+    address: 'Hubatsch Str. 3, 2345 Brunn am Gebirge, Австрія',
+    price: 'Любов до тварин без переплат!',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 48.117216773405346,        lng: 16.309169268824945,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAG5-JeDA6FMj9hDQ7WySzkuVuqftIYHTqLCNxK0BEdrPy67wKw_ZiJdoDARyz71rEvc2wEfjzjwDei384Q2zk4-84OoUWUW2uTEovorewuc4K-bFevKLo5rw3__p49HIIe5DwKQ=w426-h240-k-no'
+  },
+  {
+    id: 39, type: 'petstore', name: 'C4V Paris Batignolles', rating: 4.4,
+    address: '26 Rue des Moines, 75017 Paris, Франція',
+    price: 'Любов до тварин без переплат!',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 48.89003448647667,         lng: 2.318984090415574,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEou2Au2WUn4YEBQQMmbSYZULqJqUFiOXO9BCzvoyHfQ39uIqL89PcS5mTeiwQK82Btw4HqHsSXpc1XnyrkaoiNrBsZMIsPNnbtUQDpOsF6MjRiyfwFkvesGsg3JyhCQ4cBXJaX-g=w426-h240-k-no'
+  },
+  {
+    id: 40, type: 'petstore', name: 'Mini Zoo Pet Shop - The Pearl Branch', rating: 4.4,
+    address: '9GGV+RJ3, Doha, Катар',
+    price: 'Любов до тварин без переплат!',
+    tags: ['Drive-Thru', 'Baked Treats', 'Cat Lounge'],
+    lat: 25.38298761261028,          lng: 51.543808828938175,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGDFs29o2KFQnUpWWPTG1rlvbGfY2ciTKHhO_gwr68EJP5qQfdYM1A42_N7hCrxlZXKNokCNjtc7q_rmlsTgjawHAwyqPKxKb0nhRHnprHUyBdRx5UaIi0N6akRAxcQQPXi05Kp0cXnjEE=w408-h306-k-no'
+  },
+  {
+    id: 41, type: 'vet', name: 'Ветеринарна клініка "Білий Вовк"', rating: 4.5,
+    address: 'вулиця Уманська, 29, корпус 1, Київ, 03087',
+    price: 'Дбаємо про тварин — поважаємо ваш бюджет!',
+    tags: ['Surgery', 'Dental', 'Vaccines'],
+    lat: 50.439859319217994,  lng:30.461752178058124,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAF6lFGFqTGJMBLlYLy9VoTEw0FGuIwwz0v38YvXtgsOAxKDFyn8BXyzvVBBH-ye6wcf3BO4foUWiNjUAhTawpqtrl3ZbqClu5NLAlK1vfOFfkrGLzuxl0a_AsWwIpgXeUCsihcLdNq-L32o=w408-h271-k-no'
+  },
+  {
+    id: 42, type: 'vet', name: 'Dr. Shedi"', rating: 4.6,
+    address: 'вулиця Тополева, 3, Київ, 03049',
+    price: 'Дбаємо про тварин — поважаємо ваш бюджет!',
+    tags: ['Surgery', 'Dental', 'Vaccines'],
+    lat: 50.44396473957697,   lng:30.473928242163897,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAH2kHYG6L6GEvliXmfqokgZaKDQmt4Z1YK04TbFb9x8-aBwp4J8v0DsSkXQJ1p7d7T2wewAgaINw2KGBmuPuHl_sPAbHVntkz4RTCzPxizpcCSUCQcvoFJdYY3x15gcO8whWJsD2A=w408-h447-k-no'
+  },
+  {
+    id: 43, type: 'vet', name: 'ВетСвіт"', rating: 4.0,
+    address: 'вулиця Чумаченка, 40, Запоріжжя, Запорізька область, 69059',
+    price: 'Дбаємо про тварин — поважаємо ваш бюджет!',
+    tags: ['Surgery', 'Dental', 'Vaccines'],
+    lat: 47.78244533583842,     lng:35.20623772207118,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGG9DunfVr8TZFLAnYflDlIe0r6zxQfHVJ3tq0egMnqcYPsG3isMshGV-q7VT9et2dgbX0pfxbYIUfg-w9h98z-JiKM7fcuxlEFYLY9VOGe_VU5ue_PN1PyeTp6hEf4C1LMXq2J=w408-h408-k-no'
+  },
+  {
+    id: 44, type: 'vet', name: 'Bemowo. veterinary clinic"', rating: 4.2,
+    address: 'Powstańców Śląskich 101, 01-495 Warszawa, Польща',
+    price: 'Дбаємо про тварин — поважаємо ваш бюджет!',
+    tags: ['Surgery', 'Dental', 'Vaccines'],
+    lat: 52.25977215378198,      lng:20.917938073866633,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGAUV35ks3-JpMxcyOfbqEJkLp9EgCsGeL1G8CPbElOw91jcp0E1JbgMxxtRLrv3jRWJBRfdtpK-MHJ1d6oulV9J_FK79pYZrICJqhXYqfdgyBsfag50i5YpnBIjVfEGjqzGUoroqkwdkuH=w408-h272-k-no'
+  },
+  {
+    id: 45, type: 'vet', name: 'El Vellmarí', rating: 4.9,
+    address: 'Carrer Cienfuegos, 5, 17310 Lloret de Mar, Girona, Іспанія',
+    price: 'Дбаємо про тварин — поважаємо ваш бюджет!',
+    tags: ['Surgery', 'Dental', 'Vaccines'],
+    lat: 41.82900037239571,       lng:2.853467631360894,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEhlc0r0i_Q6BuDuAcqQID2oV5DSw_CdKR-k2e5zKDQ0wAOVvWOmZq3VCNruJhCiT04xKhSSX9pZcnPJfneipHrXgFgFSVARVHy6ohJ-l5MS4Bf5gsk4_GpDGI6vYWXebKUxmxT=w408-h272-k-no'
+  },
+  {
+    id: 46, type: 'vet', name: 'Dyrlege Blom', rating: 4.9,
+    address: 'Torshovgata 15, 0476 Oslo, Норвегія',
+    price: 'Дбаємо про тварин — поважаємо ваш бюджет!',
+    tags: ['Surgery', 'Dental', 'Vaccines'],
+    lat: 59.93784701574387,        lng:10.767745256181716,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAG5mu4BWMhfbCa7aSh__uQri_VsvXxF7DykdSG-V-fJAEtwfvc2NnziPtCTNjJnjXsLZoNYZuo-zrmDdCp2dnKB0Dz3tiweVhDQdT9NIViw2UzzLWLnyYKJJkrAUNCjgUtuY4fd9_efsqT3=w408-h306-k-no'
+  },
+  {
+    id: 47, type: 'vet', name: 'Awake Djursjukhus', rating: 4.7,
+    address: 'Västra Sandgatan 7, 252 25 Helsingborg, Швеція',
+    price: 'Дбаємо про тварин — поважаємо ваш бюджет!',
+    tags: ['Surgery', 'Dental', 'Vaccines'],
+    lat: 56.044549347570076,         lng:12.699474619642555,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAFu50pc8wFP9BJO7_c-CiQfoxoiyyorNKMtHQlFSdBJepEkMPBeqxCn1NY1-XHztBk0PECNyX8c_SaF4FW1supXfhp9i4Di3TrRA1YmDnpJ5AqzivXfw_7lfCZ6uAZXvdWZlRIKpkk29nZD=w408-h725-k-no'
+  },
+  {
+    id: 48, type: 'park', name: 'Песопарк', rating: 4.6,
+    address: 'вулиця Спаська, 12, Київ, 02000',
+    price: 'Відкритий простір для зустрічі з природою!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 50.472235099279615,  lng: 30.51993076950818,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAFmzX7ighUQxMRvhxgLJePqtKzk6ttj-rBvrevR1--x7IVFIjziR2cFLjN4uorqcwZsjQBLB-anzUtD_ycK36PYN2zmEluWWn54V1MNzumueTZA4Ufr4q5_WUxxn4rJQwzHLWWy=w408-h544-k-no'
+  },
+  {
+    id: 49, type: 'park', name: 'Sport DOG Area', rating: 4.4,
+    address: 'вулиця Здолбунівська, вул. Ревуцького, Київ, 02091',
+    price: 'Відкритий простір для зустрічі з природою!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 50.42901387807604,   lng: 30.63552939563004,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGPU6X3ILHO6LBIZwqz3I1iWnj8Kgtg5U53_s_aBkcBnKkwRMi0MmRdp3WbAbH1rVQYS7ncBulcyltDs4YofC2_VQmopD32sNhIpQTpYH4yXYMnMQ26oAAgh4NTIr4WYdJUVnNh=w408-h306-k-no'
+  },
+  {
+    id: 50, type: 'park', name: 'Собачий парк', rating: 5.0,
+    address: 'вулиця Юрія Шумського, 1б, Київ, 02000',
+    price: 'Відкритий простір для зустрічі з природою!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 50.432803683648,    lng: 30.604704602576316,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAHkAhy0F_cpzO5C73UIbfi1i6y-Q9M6MKQ7hNutc1i5OaD_nlJnXvZUUWYU20SfGzJ9OJ5JcAnnJTe5hGYYXIcn814uFy6_yGxVSdhYxd-luuJK6feNennoannEBZnCRPz1uhkR=w426-h240-k-no'
+  },
+  {
+    id: 51, type: 'park', name: 'Площадка для выгула собак', rating: 5.0,
+    address: 'вулиця Миколи Бажана, Харків, Харківська область, 61000',
+    price: 'Відкритий простір для зустрічі з природою!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 49.9743670295491,     lng: 36.21867143385237,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAElSy8wSEogtUh7BB4D-yw7QwnCsUSAsjih8w6oELVZCs2Smo3L3jjWMNdZWdhua0MuZIOTRDaWG4tM2BE6oWTZbZ-XOiCPepaAeq-WwdZw3vx_597S_Bm1tHd46NOZypnFeUDd=w408-h544-k-no'
+  },
+  {
+    id: 52, type: 'park', name: 'Парк для вигулу собак', rating: 4.9,
+    address: 'Академія сухопутних військ, Львів, Львівська область, 79000',
+    price: 'Відкритий простір для зустрічі з природою!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 49.82780576508098,      lng: 24.02246030203762,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAHmVv873bXtAcH9WOlz_7S_mwej1X7-VVFMZV_-1XLBax8ViMKMmVs3YAEtiZyyW_b8lbxzad2BmWzfXOBVwjaGIPzFhHm1Xn5LAXxRDubMqGuJ2gc3TVMN7jxBiY4WEzQWyl1C=w408-h544-k-no'
+  },
+  {
+    id: 53, type: 'park', name: 'Tuuliniityn koira-aitaus', rating: 4.9,
+    address: 'Tuulikuja 3, 02100 Espoo, Фінляндія',
+    price: 'Відкритий простір для зустрічі з природою!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 60.18966176362495,       lng: 24.790690690855335,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGyKLSH_gNR6g6utsVjuzsdZa6Q7wCdHhQwOI3TmD_yVHBtouTq6cFSPYTgfyd0NDNuumPGPA4ZEKS1ZQr22oaAIAWse_Xmk020cr3BIQunB4Xlxc9FmPt1b3rFZbBecIObwhTs=w408-h545-k-no'
+  },
+  {
+    id: 54, type: 'park', name: 'Dog Park Petržalka', rating: 4.6,
+    address: '851 01 Petržalka, Словаччина',
+    price: 'Відкритий простір для зустрічі з природою!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 48.1353311404996,       lng: 17.107693848135998,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGEb9H8Sa2HM9TEMSsUYdF8apCxmpQCXJtFBpnEffhHRmM3M7d79Pj6QYChkTEPIMK4vQLL2q9nOzkZ8zhk6Hx53bBoAxeb4ZojxNXHkKoea8IMS6DfvmapUUVULp6lAPac_zTdaQ=w408-h725-k-no'
+  },
+  {
+    id: 55, type: 'park', name: 'Area Cani Villa Borghese', rating: 4.5,
+    address: 'Viale dell"Uccelliera, 3, 00197 Roma RM, Італія',
+    price: 'Відкритий простір для зустрічі з природою!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 41.996930611004586,        lng: 12.497357862992285,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGMgkRvqpoTJdw19rh_6Sn411utzSlLhB7P6vX6Yd7J9DviNW4WjZpOiY9blg4Aeq4Vr5hdM27eJ0391Mo-F5WmZOsDMDR_tqFJpVQXBZVumBhkHYITOfIxIVEj6hrv8Ax3TQs=w408-h306-k-no'
+  },
+  {
+    id: 56, type: 'park', name: 'Campo Sgambamento Villa Bellini', rating: 4.5,
+    address: '95124 Catania, Metropolitan city of Catania, Італія',
+    price: 'Відкритий простір для зустрічі з природою!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 38.349304790737825,        lng: 15.01183340405433,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGhfuFYXVdGN65nHNHlxfyFuSptgFXugUz9Y4hqedPjSQBS0Sn1Wgs7FRirQ8Jr6yUzT5mbweGG7Y3n3oP1p0Ggv5GIw-DF8fUulR0lX8sZLfIxD0xCvZmlAfL52mzILo3WWpo=w408-h306-k-no'
+  },
+   {
+    id: 57, type: 'cafe', name: 'Cat Cafe "Мама-Кішка" ', rating: 4.2,
+    address: 'вулиця Незалежності, 30, Івано-Франківськ, Івано-Франківська область, 76000 ',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 48.919075266881734,         lng: 24.713851255934216,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEmSWXuoFXasnt4TkFsF1HoTyDppL1R6tGD6HOvoRKpRhYk0vvyycGC0XwskKZJkYFO4IX7uDbuDPz94ZRRHtF2YYdAs8KyNBQWRqyLleHZlrAEjDvbtt9v48t8-G8tieiWIBHQnw=w408-h306-k-no'
+  },
+  {
+    id: 58, type: 'cafe', name: 'Cafe Neko ', rating: 4.0,
+    address: 'Blumenstockgasse /Ecke, Ballgasse 5, 1010 Wien, Австрія',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 48.20712569066196,         lng: 16.3736533768922, 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEOUBLWYdxc924wW3pklZtXFTx4ZkKmSqmeAE6G-dxbGaiPZZF0Cq_92njBgFhDpWqawz_NvSVH75O_u3BTIZZIDen3chJv-K2JYs4Aowot87QdIyI4tP-aUKvRQWQoOPd2tiolnw=w408-h306-k-no'
+  },
+  {
+    id: 59, type: 'cafe', name: 'Das Katzencafé - Cat’n’Coffee ', rating: 4.8,
+    address: 'Paulitschgasse 9, 9020 Innere Stadt, Австрія',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 46.63607639634124,        lng: 14.304800890610455,   
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAE164eTenZcWocyxYmCziSCDAyn8VfIBlgx9SVmzhcOVrO_1Q3jfTyhRU0goDVQJ1dzqVHAGGJASQbfgke7vlCa-XrXzxYG2zmBhN-9MJe_5U1x3Mutkyy2Zpj4IiQ0kt-vDd3Wcw=w408-h272-k-no'
+  },
+  {
+    id: 60, type: 'cafe', name: 'Puppychino Dog & Coffee', rating: 4.6,
+    address: 'Budapest, Pozsonyi út 52, 1133 Угорщина',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 47.52104682808347,         lng: 19.052275568271302,   
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAHFgUW5yMk7lDliRHOzpeNsr_M310MFE6O7OBriUJmyZ1oa42bdKUwsOcsAcirMDulMaE1uK_HeasUxQrrrpLm05KcEWyrnadZcm0h0at6kMcBNZfUH0ICVJWxJEfVdcyheQR3HOH8emdPo=w408-h544-k-no'
+  },
+  {
+    id: 61, type: 'cafe', name: 'Vasmacska KávéZoo', rating: 4.5,
+    address: 'Budapest, Laktanya u. 3, 1033 Угорщина',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 47.54343436205413,          lng: 19.04532500009838,   
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAFJEUJ0fZ8v3uE72zoaTC59cJnCdxKEFoXfNjHhScCFPhpg8OLwMRYg3AG4GKopi1aRET2M7icYk-pNXKBjYMDzDBKzd_uJysgDDOFd-0RQnagHuXrcuHTJ8GN6xvh-K52fweVd6ppdSWFZ=w408-h306-k-no'
+  },
+  {
+    id: 62, type: 'cafe', name: 'Aria and Bianca’s Dog Cafe JLT - Indoor dog friendly', rating: 4.7,
+    address: 'Dubai Star - Cluster L - near Left Side Parking - Al Thanyah Fifth - Jumeirah Lakes Towers - Dubai - Обʼєднані Арабські Емірати',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 25.07209496422487,           lng: 55.13839370162682,   
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAH0-eD22bVjYlmCG80rBn6PTZEse_UKg41dNwhV2hsqyoOVANmPwAsKYnCjq8R6a_ukXOkyHjqWQwX_6wDwo4SXJ1PIOodyBs2zynX_WdX0QFjG5mWecr6cAYy4X8CpfOGxirRpbw=w426-h240-k-no'
+  },
+  {
+    id: 63, type: 'restaurant', name: 'Pawdy Neighbors on the Boulevard', rating: 4.8,
+    address: 'Downtown, 29 Burj Dubai Boulevard - Moh’d Bin - Sheikh Mohammed bin Rashid Blvd - Dubai - Обʼєднані Арабські Емірати',
+    price: 'Різні цінові категорії на будь-який бюджет',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 25.193585527075278,            lng: 55.27140652547949,   
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAH-kZaBs4gRdAbi7xFyazMb2888Dn2t2_Le626IRkA66_QtIEqZ76oCG0Q86fVYf2Rioctc7w1KKpFGYzqEmPNgnkl3j_JFloLkq4a-zsPpho425CPZCyIP1LLZerwe1D-yB57-5Gr4kO8=w408-h544-k-no'
+  },
+  {
+    id: 64, type: 'cafe', name: 'Cat Cafe Vibrissae - Al Safa Park Complex', rating: 4.6,
+    address: 'Park Complex - Al Safa 1 - Al Safa - Dubai - Обʼєднані Арабські Емірати',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 25.188320800998053,             lng: 55.23967636740118,   
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAFTXpa8-j6CTwDXHubTb87TQHMa8hzAscXfFE01-XX4F7dn1YHADFxhsVUrHztrSi4nBlViNUrp4Dt_-OAf7XvGByHKjNzg2ywNEbMmxoKeIveVotsgfGfI3myAb5YtcWJOXRT9AZBiQcI=w408-h544-k-no'
+  },
+  {
+    id: 65, type: 'cafe', name: 'Crazy Cat Café', rating: 4.4,
+    address: 'Via Napo Torriani, 5, 20124 Milano MI, Італія',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 45.744689763626674,             lng: 9.138620928655161,    
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAHfE50b8rQWfydDZPE4e4bSW14xtSeimB--Za6ycE5iIf7oKR8cs2re4kUDqjXNtjKkshhvZMSFFABb2SQ5iajxPWn3Xy5gUR7lUO1Bp-w4YBx_arL8zWlUvx4eA3l2eMKi0Ks7LKa5qYE=w408-h544-k-no'
+  },
+  {
+    id: 66, type: 'cafe', name: 'Caffeine N cookies', rating: 4.8,
+    address: 'Антифашистичке борбе 21, Београд 11000, Сербія',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 45.048306910272274,              lng: 20.44216952884984,  
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAHD-K1Txmuivj5CdPbuPwBCj9IDr02FlhwQZJ_C2Y-f49YB919UtYl7Ej9zS-LJmyKxMzmHcqNodw_qxaEUl8Fll21dmyopGt-oBu70PfeAtCW0gFOgP25-hTVAS-7ivkDJG-vUeqo-wS3p=w408-h306-k-no'
+  },
+  {
+    id: 67, type: 'cafe', name: 'Dali the Dog | Coffee & Brunch', rating: 4.7,
+    address: 'Louki Akrita 2, Ag. Dimitrios 173 43, Греція',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 37.94574528747423,               lng: 23.73039483930124,  
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAFSSM4Th7AengRQ5RSDhSn5XZVYWi7HPompOLIX-JvoYZNF4Sy930RJr2uHcj1yebLxXnpWTdCTVSywmJKaekpZSEZYRqasI-UKmE46wrVBKZS9TzbGPT9-xED_53p9zQgC9JgQ=w408-h544-k-no'
+  },
+  {
+    id: 68, type: 'cafe', name: 'The Dog Café', rating: 4.8,
+    address: 'Eden Mall, Al Gazira, St, First Al Sheikh Zayed, Giza Governorate 12588, Єгипет',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 30.02618332950545,                lng: 30.99040907864651, 
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAHsQM_VGlUrQVRdf5jEywIbaFgIUvevEuvbClhHfS7rZdN4pR5VdGxDqFh1n8W0azDF6LiZiI-1_EAIp1Uqp47353fnngmY48tae_TnV-YC6FIffnum_sU6hhzn-VRZZhivBuVF=w408-h291-k-no'
+  },
+  {
+    id: 69, type: 'cafe', name: 'Helkatti Cat Cafe', rating: 4.3,
+    address: 'Fredrikinkatu 55, 00100 Helsinki, Фінляндія',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 60.16740380189489,                lng: 24.933263251273058,  
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAE4TdgoDKx7p08XcCGyH8E_Sjii-KdHBIU0NM936MtGAcnWSic-KaxeD2XzYh9JiBOiceCKpoX9y3VxYGT0e6XBURXBeH5Y_eZp3oymS3vN7HtU6yhF-_u9VO5qGD4Chc-y7L89YA=w408-h272-k-no'
+  },
+  {
+    id: 70, type: 'cafe', name: 'O Porto dos gatos', rating: 4.5,
+    address: 'Av. de Rodrigues de Freitas 93, 4300-466 Porto, Португалія',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 41.150282882198276,                 lng: -8.596972775796015,  
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGAADc3cvxltg6fr2l5L7_U9oNr70HIPcj3reiuTlIob0SXo3dEVGtONE1C78qNIi-5GWzgrcLkkBM_N5Sf5NiOjqB0RytD-RbCwjkgwmN1T_arcQNbAvjau-d5uRpb2a7WLm1j=w426-h240-k-no'
+  },
+  {
+    id: 71, type: 'cafe', name: 'Ruff Café', rating: 4.9,
+    address: 'Mount Venus Rd, Rathfarnham, Dublin 16, D16 F9C4, Ірландія',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 53.280601210200246,                 lng: -6.311826673504119,  
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGY9ThDu5GV9F0A2lZa6IG7s5j8yqZyEQhInJxK19PQhZkJDGgDGBWfoz3edb-1RfYF39U-co9OhnO1kiUnVO0E54hq5BxGF7Sam3C8wwDeJnkTJ2ex-pLQ6OKELVg1i0hBNYIK3g=w408-h544-k-no'
+  },
+  {
+    id: 72, type: 'cafe', name: 'Le Café Pomme', rating: 4.9,
+    address: 'Nøstegaten 47, 5010 Bergen, Норвегія',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 60.39382143641684,                  lng: 5.315741643044966,  
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAG6d3Y876sNIAdBK4kAzyYfLPVh1-M-PlpTtRKGyfKSSk6ryN1WaN7VVFWgy4912-XiFWD9k-CAcHvrGdm49OK-xdPlTZe8TBSr1erKm1LAQjeKzOx3YeYpGSHc4GX4KRIM2jiBEw=w408-h306-k-no'
+  },
+  {
+    id: 73, type: 'cafe', name: 'Dunčovňa - Kaviareň a psia škôlka', rating: 4.7,
+    address: 'Jašíkova 24, 821 04 Bratislava, Словаччина',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 48.15892467381733,                  lng: 17.16420565187049,   
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEreMXf_inVAfJW82n0u9W0VmQh7DVCfhU4h1tHtOVyFlGFqCpw0tvZZzDo0eG5jN5dCVtgM0q8VGLk6lPZ5Yt8zP45oz_tB8HXRZ2VVvj3HfhgDpHFGJYg8tk9rtgGZLirocFXRg=w426-h240-k-no'
+  },
+     
+  {
+    id: 74, type: 'cafe', name: 'Puntas Dog-themed Sweet-shop', rating: 4.8,
+    address: 'Soběslavská 2249/23, 130 00 Žižkov, Чехія',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 50.08357073057129,                   lng: 14.472213567407486,   
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAHV_LEJZuojgjuRlYpWdi1ABs2Ij8xv-iTlv5QIW_5J7yD_iWWXyjqWMZI75bUtnRuMo3rp8cp_qQor3PUblvI5aN0nd40zTowQgA6GFkfO_4I0SJNhHQ7MY_3K3-GdmJwB4PXiXQ=w408-h544-k-no'
+  },
+  {
+    id: 75, type: 'cafe', name: 'CatCafePrague', rating: 4.3,
+    address: 'Gorazdova 332/20, 120 00 Nové Město, Чехія',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 50.07946218270772,                    lng: 14.415374901330486,   
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGZwh2oqON7YfQU6NS7Wv5kkY5deWL2YCJVddvEgvlL9kAEzW3qgY0NBrqh_ncgXtP-tQWGmVmPT-Ym9YVgiZw2GJBy007AnoAc1Kbs0T0__FwJu2slyS2pmGLZrDJ-CiyGSNMN=w408-h306-k-no'
+  },
+  {
+    id: 76, type: 'cafe', name: 'Cat café', rating: 4.4,
+    address: 'Michalská 430/3, 110 00 Staré Město, Чехія',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 50.09262164901381,                    lng: 14.42435492665003,    
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAHPdzHkYB9lfNWp6wK1O90mZkIBz6AqZCL8zgtRjB1S_tq_eqEX8UEcdZF86efw5mWE4XjlN1m1ZV4Dv_uvo2cCTftULa_NFLDiqTDKuqQi_YeweJwZGKSxURrmSUV4z3ITwTVB=w426-h240-k-no'
+  },
+  {
+    id: 77, type: 'restaurant', name: 'Romeow Cat Bistrot', rating: 4.4,
+    address: 'Via Francesco Negri, 15, 00154 Roma RM, Італія',
+    price: 'Різні цінові категорії на будь-який бюджет',
+    tags: ['Patio', 'Pet Menu', 'Friendly Staff'],
+    lat: 41.87760021362866,  lng: 12.480999358251717,
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAEYN6vDgCFh7rr6T8CJ353mIY74vUwuLM830CxkEWw-w87rVTdgOw4sAOX6Zu8JPY9s-1-XbkvClAMDFVELOdEJz9vhGlExJxLifLqPfda7A_96KFYpkSFS4-JxWmkrlzPmQpIe=w408-h270-k-no'
+  },
+  {
+    id: 78, type: 'cafe', name: 'Łapkawe Dog Cafe', rating: 5.0,
+    address: 'Franza Wincklera 8, 40-005 Katowice, Польща',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 50.38352965847969,                    lng: 18.979225307099025,     
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAGQCnZhfLrP3KU3Ttp_pRQZEjumpTZ83asNAtNmaHx3NYiHmeI74mrQa8rAVh3QT_Cl9Hf_jbqaQh7zmyMSU-ESFTFkJZXAvw0tu1X84On95HG4wEg6s31itFMqeu3dOUSlkOMnJKIjsQA=w408-h306-k-no'
+  },
+  {
+    id: 79, type: 'cafe', name: 'Cat Café Kociarnia', rating: 4.3,
+    address: 'Lubicz 1, 31-033 Kraków, Польща',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 50.066078859243135,                     lng: 19.94613170305695,     
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAHGG6IjBKFeBwh6qf4txRLiq0_dr8U0st40rrxNdVH_MICIbTVlHdGI9AT1JXdaQW_k-k6HtScPszmEKIusnEeNXm1vW9A8aDiZvMS50v2L-Ab3dzn7Np2xXCgHa2a1F5zTlqcxQfYd1jo=w408-h306-k-no'
+  },
+  {
+    id: 80, type: 'cafe', name: 'Miau Cafe', rating: 4.4,
+    address: 'Adama Naruszewicza 30, 02-627 Warszawa, Польща',
+    price: 'Бюджетний варіант для відпочинку з тваринами!',
+    tags: ['Off-Leash', 'Agility', 'Water Fountain'],
+    lat: 52.21305763231667,                     lng: 21.014712093977536,    
+    img: 'https://lh3.googleusercontent.com/gps-cs-s/APNQkAFRAzKAB4B_ZsTOx8jOzTSGjPQJvh8oM0vlzcSqpVMAqCef9UotrUQ4wAuGVqsnJy1ENSHqo06xiJoITtVLFA9pmkzpiqOISMpmPPi9OLkvgRgqSX-yra5zKDSvsDu9W4hEqVU=w408-h306-k-no'
+  },
+
+
+];
+
+const typeConfig = {
+  hotel:      { color: '#185FA5', bg: '#E6F1FB', icon: 'ti-building',          label: 'Hotel',      activeClass: 'active-hotel' },
+  cafe:       { color: '#854F0B', bg: '#FAEEDA', icon: 'ti-coffee',             label: 'Cafe',       activeClass: 'active-cafe' },
+  restaurant: { color: '#993C1D', bg: '#FAECE7', icon: 'ti-tools-kitchen-2',    label: 'Restaurant', activeClass: 'active-rest' },
+  petstore:   { color: '#534AB7', bg: '#EEEDFE', icon: 'ti-paw',                label: 'Petstore',   activeClass: 'active-co' },
+  vet:        { color: '#A32D2D', bg: '#FCEBEB', icon: 'ti-stethoscope',         label: 'Vet',        activeClass: 'active-vet' },
+  park:       { color: '#3B6D11', bg: '#EAF3DE', icon: 'ti-trees',              label: 'Park',       activeClass: 'active-park' },
+};
+
+// ── MAP INIT ──
+const map = L.map('map', { zoomControl: true }).setView([49.0, 31.0], 6);
+fixLayout();
+setTimeout(() => { fixLayout(); map.invalidateSize(); }, 100);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  maxZoom: 19
+}).addTo(map);
+
+// ── MARKERS ──
+const markerLayer = {};
+
+function createMarkerIcon(type) {
+  const cfg = typeConfig[type];
+  return L.divIcon({
+    className: '',
+    html: `<div class="map-marker marker-${type}"><i class="ti ${cfg.icon}"></i></div>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -22]
+  });
+}
+
+locations.forEach(loc => {
+  const cfg = typeConfig[loc.type];
+  const marker = L.marker([loc.lat, loc.lng], { icon: createMarkerIcon(loc.type) })
+    .addTo(map)
+    .bindPopup(`
+      <div class="popup-body">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+          <div style="width:22px;height:22px;border-radius:50%;background:${cfg.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="ti ${cfg.icon}" style="font-size:12px;color:${cfg.color};"></i>
+          </div>
+          <div class="type-badge" style="background:${cfg.bg};color:${cfg.color};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;">${cfg.label}</div>
+        </div>
+        <div class="popup-title">${loc.name}</div>
+        <div class="popup-sub">
+          <span style="color:#f59e0b;font-weight:600;">★ ${loc.rating}</span>
+          <span style="color:#999;margin-left:4px;">· ${loc.address}</span>
+        </div>
+        <button onclick="openDetail(${loc.id})" style="margin-top:8px;width:100%;padding:5px;background:#E6F1FB;color:#185FA5;border:1px solid #85B7EB;border-radius:20px;font-size:12px;cursor:pointer;font-weight:500;">Детальніше →</button>
+      </div>
+    `, { maxWidth: 240 });
+
+  marker.on('click', () => selectCard(loc.id));
+  markerLayer[loc.id] = marker;
+});
+
+// ── RENDER CARDS ──
+let activeFilter = 'all';
+let selectedId = null;
+
+function renderCards() {
+  const query = document.getElementById('searchInput').value.toLowerCase();
+  const list = document.getElementById('cardsList');
+  const emptyState = document.getElementById('emptyState');
+  const emptyQuery = document.getElementById('emptyQuery');
+  list.innerHTML = '';
+  let count = 0;
+
+  const filtered = [];
+  locations.forEach(loc => {
+    const matchType = activeFilter === 'all' || loc.type === activeFilter;
+    const matchSearch = loc.name.toLowerCase().includes(query) || loc.address.toLowerCase().includes(query);
+    if (matchType && matchSearch) filtered.push(loc);
+  });
+  filtered.sort((a, b) => b.rating - a.rating);
+
+  filtered.forEach(loc => {
+    count++;
+
+    const cfg = typeConfig[loc.type];
+    const card = document.createElement('div');
+    card.className = 'location-card' + (loc.id === selectedId ? ' selected' : '');
+    card.dataset.id = loc.id;
+    card.innerHTML = `
+      <div class="card-img-wrap">
+        <img class="card-img" src="${loc.img}" alt="${loc.name}" loading="lazy"/>
+        <div class="card-type-overlay">
+          <div class="type-badge" style="background:${cfg.color};color:#fff"><i class="ti ${cfg.icon}" style="font-size:11px;margin-right:3px;"></i>${cfg.label}</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-header">
+          <div class="card-title">${loc.name}</div>
+          <div class="card-rating"><span style="color:#f59e0b;">★</span> ${loc.rating}</div>
+        </div>
+        <div class="card-address">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          ${loc.address}
+        </div>
+        <div class="card-price">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          ${loc.price}
+        </div>
+        <div class="card-tags">${loc.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+      </div>
+    `;
+    card.onclick = () => selectCard(loc.id);
+    list.appendChild(card);
+  });
+
+  document.getElementById('countDisplay').textContent = count;
+
+  // ── EMPTY STATE ──
+  if (count === 0) {
+    list.style.display = 'none';
+    const trimmed = query.trim();
+    if (trimmed) {
+      emptyQuery.textContent = `«${trimmed}»`;
+      emptyQuery.style.display = 'block';
+    } else {
+      emptyQuery.style.display = 'none';
+    }
+    emptyState.style.display = 'flex';
+  } else {
+    list.style.display = '';
+    emptyState.style.display = 'none';
+  }
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  renderCards();
+}
+
+// ── REVIEWS (Firebase Firestore) ──
+const avatarColors = [
+  {bg:'#E1F5EE',text:'#0F6E56'},{bg:'#EEEDFE',text:'#534AB7'},
+  {bg:'#FAECE7',text:'#993C1D'},{bg:'#E6F1FB',text:'#185FA5'},
+  {bg:'#EAF3DE',text:'#3B6D11'},{bg:'#FAEEDA',text:'#854F0B'}
+];
+
+function getInitials(name) {
+  return name.trim().split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2) || '??';
+}
+
+function timeAgo(ts) {
+  const diff = (Date.now() - ts) / 1000;
+  if (diff < 60) return 'щойно';
+  if (diff < 3600) return Math.floor(diff/60) + ' хв тому';
+  if (diff < 86400) return Math.floor(diff/3600) + ' год тому';
+  if (diff < 604800) return Math.floor(diff/86400) + ' дн тому';
+  return new Date(ts).toLocaleDateString('uk-UA');
+}
+
+let currentDetailId = null;
+let pickedStars = 0;
+
+function starsHtml(n, size = 13) {
+  let s = '';
+  for (let i = 1; i <= 5; i++) {
+    s += `<span style="font-size:${size}px;color:${i <= n ? '#f59e0b' : '#ddd'};">★</span>`;
+  }
+  return s;
+}
+
+async function waitForFirebase() {
+  if (window._firebaseReady) return true;
+  return new Promise(resolve => {
+    window.addEventListener('firebaseReady', () => resolve(true), { once: true });
+    setTimeout(() => resolve(false), 5000);
+  });
+}
+
+async function loadReviewsFromFirebase(locationId) {
+  const ready = await waitForFirebase();
+  if (!ready) { console.warn('Firebase не готовий'); return []; }
+  try {
+    const q = window._fbQuery(
+      window._fbCollection(window._firebaseDb, 'reviews'),
+      window._fbWhere('locationId', '==', String(locationId)),
+      window._fbOrderBy('ts', 'desc')
+    );
+    const snap = await window._fbGetDocs(q);
+    return snap.docs.map(d => d.data());
+  } catch(e) {
+    console.error('Firebase load error:', e);
+    return [];
+  }
+}
+
+async function saveReviewToFirebase(locationId, review) {
+  const ready = await waitForFirebase();
+  if (!ready) throw new Error('Firebase не підключено');
+  await window._fbAddDoc(
+    window._fbCollection(window._firebaseDb, 'reviews'),
+    { ...review, locationId: String(locationId), ts: Date.now() }
+  );
+}
+
+async function renderReviewsSection(locationId) {
+  const listEl = document.getElementById('reviews-list');
+  const summaryEl = document.getElementById('rating-summary');
+  if (!listEl || !summaryEl) return;
+
+  listEl.innerHTML = '<div style="text-align:center;padding:16px;color:#bbb;font-size:13px;">Завантаження...</div>';
+
+  const reviews = await loadReviewsFromFirebase(locationId);
+  const sorted  = [...reviews].sort((a,b) => b.rating - a.rating);
+
+  const counts = [0,0,0,0,0];
+  reviews.forEach(r => { if (r.rating>=1&&r.rating<=5) counts[r.rating-1]++; });
+  const max = Math.max(...counts, 1);
+  const loc = locations.find(l => l.id === locationId);
+  const ratingAvg = reviews.length
+    ? (reviews.reduce((s,r) => s+r.rating, 0) / reviews.length).toFixed(1)
+    : loc.rating;
+
+  const barsHtml = [5,4,3,2,1].map(star => {
+    const c = counts[star-1];
+    const w = Math.round((c/max)*100);
+    return `<div class="rbar-row">
+      <span class="rbar-label">${star}</span>
+      <div class="rbar-track"><div class="rbar-fill" style="width:${w}%"></div></div>
+      <span class="rbar-count">${c}</span>
+    </div>`;
+  }).join('');
+
+  summaryEl.innerHTML = `
+    <div class="detail-rating-row">
+      <div class="detail-stars">${starsHtml(Math.round(ratingAvg))}</div>
+      <span class="detail-rating-num">${ratingAvg}</span>
+      <span class="detail-rating-count">· ${reviews.length} відгуки</span>
+    </div>
+    <div class="rating-bars">${barsHtml}</div>
+  `;
+
+  listEl.innerHTML = sorted.length ? sorted.map(r => {
+    const col = avatarColors[Math.abs((r.name||'').charCodeAt(0)||0) % avatarColors.length];
+    return `<div class="review-item">
+      <div class="review-top">
+        <div class="review-avatar" style="background:${col.bg};color:${col.text};">${getInitials(r.name)}</div>
+        <span class="review-name">${r.name}</span>
+        <span class="review-date">${timeAgo(r.ts)}</span>
+      </div>
+      <div class="review-stars-row">${starsHtml(r.rating, 12)}</div>
+      <div class="review-text">${r.text}</div>
+    </div>`;
+  }).join('') : `<div class="no-reviews">Ще немає відгуків.<br>Будьте першими!</div>`;
+}
+
+function toggleReviewForm() {
+  const form = document.getElementById('reviewForm');
+  const isVisible = form.classList.contains('visible');
+  if (isVisible) {
+    form.classList.remove('visible');
+  } else {
+    pickedStars = 0;
+    document.getElementById('reviewName').value = '';
+    document.getElementById('reviewText').value = '';
+    document.getElementById('formError').classList.remove('show');
+    updateStarPicker(0);
+    form.classList.add('visible');
+    document.getElementById('reviewName').focus();
+  }
+}
+
+function updateStarPicker(n) {
+  pickedStars = n;
+  document.querySelectorAll('.star-pick').forEach((el, i) => {
+    el.classList.toggle('lit', i < n);
+  });
+}
+
+function hoverStars(n) {
+  document.querySelectorAll('.star-pick').forEach((el, i) => {
+    el.classList.toggle('lit', i < (n || pickedStars));
+  });
+}
+
+async function submitReview() {
+  const name = document.getElementById('reviewName').value.trim();
+  const text = document.getElementById('reviewText').value.trim();
+  const err  = document.getElementById('formError');
+  const btn  = document.querySelector('.submit-btn');
+
+  if (!pickedStars) { err.textContent = 'Будь ласка, оберіть оцінку'; err.classList.add('show'); return; }
+  if (!name)        { err.textContent = 'Введіть своє імʼя';           err.classList.add('show'); return; }
+  if (!text)        { err.textContent = 'Напишіть текст відгуку';       err.classList.add('show'); return; }
+  err.classList.remove('show');
+
+  btn.disabled = true;
+  btn.textContent = 'Збереження...';
+
+  try {
+    await saveReviewToFirebase(currentDetailId, { name, text, rating: pickedStars });
+    document.getElementById('reviewForm').classList.remove('visible');
+    await renderReviewsSection(currentDetailId);
+  } catch(e) {
+    err.textContent = 'Помилка збереження. Спробуй ще раз.';
+    err.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Опублікувати';
+  }
+}
+
+function closeDetail() {
+  document.getElementById('detailPanel').classList.remove('open');
+}
+
+function openDetail(id) {
+  currentDetailId = id;
+  const loc = locations.find(l => l.id === id);
+  if (!loc) return;
+  const cfg = typeConfig[loc.type];
+
+  const imgEl = document.getElementById('detailImg');
+  if (loc.img) {
+    imgEl.innerHTML = `<img src="${loc.img}" alt="${loc.name}" class="detail-panel-img" onerror="this.parentElement.innerHTML='<div class=detail-panel-img-placeholder><i class=\\'ti ${cfg.icon}\\' style=\\'font-size:52px;color:${cfg.color};opacity:.4\\'></i></div>'"/>`;
+  } else {
+    imgEl.innerHTML = `<div class="detail-panel-img-placeholder"><i class="ti ${cfg.icon}" style="font-size:52px;color:${cfg.color};opacity:.4"></i></div>`;
+  }
+
+  document.getElementById('detailBody').innerHTML = `
+    <div class="detail-badge" style="background:${cfg.bg};color:${cfg.color};">
+      <i class="ti ${cfg.icon}" style="font-size:12px;"></i> ${cfg.label}
+    </div>
+    <div class="detail-name">${loc.name}</div>
+    <div class="detail-addr"><i class="ti ti-map-pin" style="font-size:12px;"></i> ${loc.address}</div>
+    <div id="rating-summary"></div>
+    <div class="detail-tags">${loc.tags.map(t=>`<span class="detail-tag">${t}</span>`).join('')}</div>
+    <div class="detail-divider"></div>
+    <div class="reviews-header-row">
+      <span class="reviews-title">Відгуки</span>
+      <button class="write-review-btn" onclick="toggleReviewForm()">
+        <i class="ti ti-edit" style="font-size:12px;"></i> Написати
+      </button>
+    </div>
+    <div class="review-form" id="reviewForm">
+      <div class="review-form-title">Ваш відгук</div>
+      <div class="star-picker" id="starPicker">
+        <span class="star-pick" onclick="updateStarPicker(1)" onmouseover="hoverStars(1)" onmouseout="hoverStars(0)">★</span>
+        <span class="star-pick" onclick="updateStarPicker(2)" onmouseover="hoverStars(2)" onmouseout="hoverStars(0)">★</span>
+        <span class="star-pick" onclick="updateStarPicker(3)" onmouseover="hoverStars(3)" onmouseout="hoverStars(0)">★</span>
+        <span class="star-pick" onclick="updateStarPicker(4)" onmouseover="hoverStars(4)" onmouseout="hoverStars(0)">★</span>
+        <span class="star-pick" onclick="updateStarPicker(5)" onmouseover="hoverStars(5)" onmouseout="hoverStars(0)">★</span>
+      </div>
+      <input class="name-input" id="reviewName" type="text" placeholder="Ваше імʼя" maxlength="40"/>
+      <textarea class="review-textarea" id="reviewText" placeholder="Розкажіть про своє враження від місця..." maxlength="400"></textarea>
+      <div class="form-error" id="formError"></div>
+      <div class="form-actions">
+        <button class="cancel-btn" onclick="toggleReviewForm()">Скасувати</button>
+        <button class="submit-btn" onclick="submitReview()">Опублікувати</button>
+      </div>
+    </div>
+    <div id="reviews-list"></div>
+  `;
+
+  document.getElementById('detailPanel').classList.add('open');
+  renderReviewsSection(id);
+}
+
+function selectCard(id) {
+  selectedId = id;
+  renderCards();
+  const loc = locations.find(l => l.id === id);
+  if (loc) {
+    map.flyTo([loc.lat, loc.lng], 15, { animate: true, duration: 0.8 });
+    markerLayer[id].openPopup();
+    const el = document.querySelector(`.location-card[data-id="${id}"]`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function fitVisibleMarkers(type) {
+  const visible = locations.filter(l => type === 'all' || l.type === type);
+  if (!visible.length) return;
+  const bounds = L.latLngBounds(visible.map(l => [l.lat, l.lng]));
+  map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14, animate: true, duration: 0.6 });
+}
+
+function setFilter(type, btn) {
+  activeFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b => { b.className = 'filter-btn'; });
+  if (type === 'all') btn.classList.add('active');
+  else btn.classList.add(typeConfig[type].activeClass);
+  locations.forEach(loc => {
+    const marker = markerLayer[loc.id];
+    const visible = type === 'all' || loc.type === type;
+    if (visible) map.addLayer(marker);
+    else map.removeLayer(marker);
+  });
+  fitVisibleMarkers(type);
+  renderCards();
+}
+
+function filterCards() { renderCards(); }
+
+// init
+renderCards();
+setTimeout(() => fitVisibleMarkers('all'), 200);
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    // 1. Отримуємо параметри з URL (наприклад, ?type=cafe)
+    const urlParams = new URLSearchParams(window.location.search);
+    const typeFromUrl = urlParams.get('type');
+
+    if (typeFromUrl) {
+      // 2. Шукаємо кнопку фільтра, яка має відповідний data-type
+      const targetButton = document.querySelector(`.filter-btn[data-type="${typeFromUrl}"]`);
+
+      if (targetButton) {
+        // 3. Викликаємо вашу функцію фільтрації
+        // Передаємо тип і саму кнопку, щоб вона стала активною (зеленою)
+        setFilter(typeFromUrl, targetButton);
+        
+        // Додатково прокрутимо фільтри до цієї кнопки, якщо їх багато
+        targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  });
+</script>
+</body>
+</html>

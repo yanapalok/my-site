@@ -1,0 +1,631 @@
+/* Підключення шрифту */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #ffffff;
+    color: #333;
+    line-height: 1.5;
+}
+
+/* --- ГЛОБАЛЬНИЙ КОНТЕЙНЕР --- */
+.container {
+    max-width: 1200px; 
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* --- HEADER --- */
+header {
+    border-bottom: 1px solid #f0f0f0; 
+}
+
+header .container {
+    display: flex; /* Тільки в шапці елементи йдуть у ряд */
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 20px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo img {
+    height: 40px; 
+    width: auto;
+}
+
+.logo h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1a3a4a;
+}
+
+.menu ul {
+    display: flex;
+    gap: 30px;
+    list-style: none;
+}
+
+.menu ul li a {
+    text-decoration: none;
+    color: #4a5568; 
+    font-size: 15px;
+    font-weight: 500;
+    transition: 0.2s;
+}
+
+.menu ul li a:hover, .menu ul li a.active {
+    color: #66bb6a;
+}
+
+/* --- HERO SECTION --- */
+.hero {
+    padding: 100px 0; 
+    background-color: #fdfcf9; 
+}
+
+.hero-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+}
+
+.hero-content {
+    flex: 1;
+}
+
+.hero-content h1 {
+    font-size: 56px; 
+    font-weight: 700;
+    line-height: 1.1;
+    color: #242424;
+    margin-bottom: 24px;
+}
+
+.hero-content p {
+    font-size: 18px;
+    color: #6a6a6a;
+    margin-bottom: 40px;
+    max-width: 480px;
+}
+
+.hero-btns {
+    display: flex;
+    gap: 16px;
+}
+
+/* Кнопки */
+/* Базова кнопка */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 26px;
+    background-color: #6dbd5d;
+    color: white; /* Білий колір тексту */
+    border: none;
+    border-radius: 50px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+    font-family: 'Inter', sans-serif;
+    
+    /* ВИПРАВЛЕННЯ ТУТ: */
+    text-decoration: none; /* Прибирає підкреслення */
+}
+
+.btn:hover {
+    background-color: #5caa4d;
+    color: white; /* Гарантуємо, що колір не зміниться при наведенні */
+    text-decoration: none;
+}
+
+/* Більша зелена кнопка (hero) */
+.btn-green {
+    padding: 14px 28px;
+    font-size: 16px;
+    color: white;
+    text-decoration: none;
+}
+
+.btn-outline {
+    display: inline-flex; /* Додаємо, щоб посилання поводилося як кнопка */
+    align-items: center;
+    padding: 14px 28px;
+    background-color: white;
+    color: #333;
+    border: 1px solid #e0e0e0;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.3s;
+    
+    /* ТУТ ТАКОЖ: */
+    text-decoration: none; 
+}
+
+.btn-outline:hover {
+    background-color: #f8f8f8;
+    text-decoration: none;
+    color: #333;
+}
+.hero-image-container {
+    flex: 1;
+    position: relative;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.main-img {
+    width: 100%;
+    max-width: 520px;
+    border-radius: 40px; 
+    object-fit: cover;
+}
+
+.stat-card {
+    position: absolute;
+    bottom: 30px;
+    left: -20px; 
+    background: white;
+    padding: 16px 24px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.07);
+}
+
+/* --- СЕКЦІЇ КАТЕГОРІЙ ТА ПЕРЕВАГ (ВИПРАВЛЕНО) --- */
+
+.categories, .features {
+    padding: 80px 0;
+}
+
+/* Скасовуємо flex для контейнера, щоб заголовок був зверху */
+.categories .container, 
+.features .container {
+    display: block; 
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+.section-header h2 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #1a202c;
+    margin-bottom: 10px;
+}
+
+.section-header p {
+    color: #718096;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Сітка карток */
+.category-grid {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.category-card {
+    flex: 1;
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 16px;
+    padding: 30px 20px;
+    text-decoration: none;
+    color: inherit;
+    transition: 0.3s;
+}
+
+.category-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+}
+
+/* Іконки категорій */
+.icon-box {
+    width: 45px;
+    height: 45px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin-bottom: 20px;
+}
+
+.green-bg { background-color: #e8f5e9; }
+.orange-bg { background-color: #fff3e0; }
+.teal-bg { background-color: #e0f2f1; }
+.yellow-bg { background-color: #fffde7; }
+
+/* Сітка переваг */
+.features-grid {
+    display: flex;
+    justify-content: space-around;
+    gap: 40px;
+    text-align: center;
+}
+
+.feature-item {
+    flex: 1;
+    max-width: 300px;
+}
+
+.circle-icon {
+    width: 60px;
+    height: 60px;
+    background-color: #f7fafc;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin: 0 auto 20px;
+    color: #6dbd5d;
+}
+
+.feature-item h4 {
+    font-size: 20px;
+    color: #2d3748;
+    margin-bottom: 12px;
+}
+
+.feature-item p {
+    font-size: 15px;
+    color: #718096;
+}
+
+
+/* --- СЕКЦІЯ CTA --- */
+.cta-section {
+    background-color: #72c166; /* Яскраво-зелений як на фото */
+    padding: 80px 0;
+    text-align: center;
+    color: white;
+}
+
+.cta-section h2 {
+    font-size: 42px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.cta-section p {
+    font-size: 18px;
+    opacity: 0.9;
+    margin-bottom: 30px;
+}
+
+.btn-white-round {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background-color: white;
+    color: #72c166;
+    padding: 15px 35px;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 16px;
+    transition: 0.3s;
+}
+
+.btn-white-round:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+/* --- FOOTER --- */
+footer {
+    background-color: #f5eee6; /* Кремовий фон підвалу */
+    padding: 80px 0;
+    color: #4a5568;
+}
+
+/* Скасовуємо flex загального контейнера для підвалу */
+footer .container {
+    display: block; 
+}
+
+.footer-inner {
+    display: flex;
+    justify-content: space-between;
+    gap: 40px;
+}
+
+.footer-col {
+    flex: 1;
+}
+
+.footer-col h4 {
+    color: #2d3748;
+    margin-bottom: 25px;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.footer-desc {
+    margin-top: 15px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #718096;
+}
+
+.footer-col ul {
+    list-style: none;
+    padding: 0;
+}
+
+.footer-col ul li {
+    margin-bottom: 12px;
+}
+
+.footer-col ul li a {
+    text-decoration: none;
+    color: #718096;
+    font-size: 15px;
+    transition: 0.2s;
+}
+
+.footer-col ul li a:hover {
+    color: #72c166;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+}
+
+.contact-item a {
+    text-decoration: none;
+    color: #718096;
+}
+
+/* ==========================================
+   ABOUT PAGE
+   ========================================== */
+
+/* Hero */
+.about-hero {
+    background-color: #faf9f5;
+    padding: 80px 0 60px;
+    text-align: center;
+}
+
+.about-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    border: 1px solid #e8e8e8;
+    border-radius: 50px;
+    padding: 8px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #4a5568;
+    margin-bottom: 28px;
+}
+
+.about-hero h1 {
+    font-size: 52px;
+    font-weight: 700;
+    color: #1a202c;
+    line-height: 1.15;
+    max-width: 680px;
+    margin: 0 auto 24px;
+}
+
+.about-hero p {
+    font-size: 17px;
+    color: #718096;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.7;
+}
+
+/* Stats */
+.stats-section {
+    padding: 70px 0;
+    background: white;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.stats-grid {
+    display: flex;
+    justify-content: space-around;
+    gap: 40px;
+    text-align: center;
+}
+
+.stat-item .stat-number {
+    font-size: 36px;
+    font-weight: 700;
+    color: #6dbd5d;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.stat-item .stat-label {
+    font-size: 14px;
+    color: #718096;
+}
+
+/* Our Story */
+.story-section {
+    padding: 90px 0;
+    background: white;
+}
+
+.story-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 80px;
+}
+
+.story-content {
+    flex: 1;
+}
+
+.story-content h2 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #1a202c;
+    margin-bottom: 24px;
+}
+
+.story-content p {
+    font-size: 15px;
+    color: #4a5568;
+    line-height: 1.8;
+    margin-bottom: 18px;
+}
+
+.story-image {
+    flex: 1;
+}
+
+.story-image img {
+    width: 100%;
+    max-width: 460px;
+    border-radius: 24px;
+    object-fit: cover;
+    display: block;
+}
+
+/* Values */
+.values-section {
+    padding: 90px 0;
+    background: #faf9f5;
+}
+
+.values-grid {
+    display: flex;
+    justify-content: space-around;
+    gap: 30px;
+    text-align: center;
+    margin-top: 50px;
+}
+
+.value-item {
+    flex: 1;
+    max-width: 260px;
+}
+
+.value-icon {
+    width: 56px;
+    height: 56px;
+    background-color: #f0f9ee;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    margin: 0 auto 18px;
+    color: #6dbd5d;
+}
+
+.value-item h4 {
+    font-size: 17px;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 10px;
+}
+
+.value-item p {
+    font-size: 14px;
+    color: #718096;
+    line-height: 1.7;
+}
+
+/* Join Community */
+.join-section {
+    padding: 90px 0;
+    background: white;
+}
+
+.join-card {
+    background: #f7faef;
+    border-radius: 24px;
+    padding: 60px 40px;
+    text-align: center;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.join-card h2 {
+    font-size: 34px;
+    font-weight: 700;
+    color: #1a202c;
+    margin-bottom: 12px;
+}
+
+.join-card p {
+    font-size: 16px;
+    color: #718096;
+    margin-bottom: 32px;
+}
+
+.join-btns {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+}
+
+.btn-green-round {
+    padding: 14px 30px;
+    background-color: #6dbd5d;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-green-round:hover {
+    background-color: #5caa4d;
+}
+
+.btn-outline-round {
+    padding: 14px 30px;
+    background: white;
+    color: #333;
+    border: 1px solid #e0e0e0;
+    border-radius: 50px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.3s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-outline-round:hover {
+    border-color: #bbb;
+}
