@@ -27,7 +27,7 @@ header {
 }
 
 header .container {
-    display: flex; /* Тільки в шапці елементи йдуть у ряд */
+    display: flex; 
     align-items: center;
     justify-content: space-between;
     padding: 15px 20px;
@@ -113,7 +113,7 @@ header .container {
     gap: 10px;
     padding: 12px 26px;
     background-color: #6dbd5d;
-    color: white; /* Білий колір тексту */
+    color: white; 
     border: none;
     border-radius: 50px;
     font-size: 15px;
@@ -122,17 +122,17 @@ header .container {
     transition: 0.3s;
     font-family: 'Inter', sans-serif;
     
-    /* ВИПРАВЛЕННЯ ТУТ: */
-    text-decoration: none; /* Прибирає підкреслення */
+    
+    text-decoration: none; 
 }
 
 .btn:hover {
     background-color: #5caa4d;
-    color: white; /* Гарантуємо, що колір не зміниться при наведенні */
+    color: white; 
     text-decoration: none;
 }
 
-/* Більша зелена кнопка (hero) */
+
 .btn-green {
     padding: 14px 28px;
     font-size: 16px;
@@ -141,7 +141,7 @@ header .container {
 }
 
 .btn-outline {
-    display: inline-flex; /* Додаємо, щоб посилання поводилося як кнопка */
+    display: inline-flex; 
     align-items: center;
     padding: 14px 28px;
     background-color: white;
@@ -153,7 +153,7 @@ header .container {
     cursor: pointer;
     transition: 0.3s;
     
-    /* ТУТ ТАКОЖ: */
+    
     text-decoration: none; 
 }
 
@@ -189,13 +189,12 @@ header .container {
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.07);
 }
 
-/* --- СЕКЦІЇ КАТЕГОРІЙ ТА ПЕРЕВАГ (ВИПРАВЛЕНО) --- */
+/* --- СЕКЦІЇ КАТЕГОРІЙ ТА ПЕРЕВАГ  --- */
 
 .categories, .features {
     padding: 80px 0;
 }
 
-/* Скасовуємо flex для контейнера, щоб заголовок був зверху */
 .categories .container, 
 .features .container {
     display: block; 
@@ -299,7 +298,7 @@ header .container {
 
 /* --- СЕКЦІЯ CTA --- */
 .cta-section {
-    background-color: #72c166; /* Яскраво-зелений як на фото */
+    background-color: #72c166; 
     padding: 80px 0;
     text-align: center;
     color: white;
@@ -338,12 +337,12 @@ header .container {
 
 /* --- FOOTER --- */
 footer {
-    background-color: #f5eee6; /* Кремовий фон підвалу */
+    background-color: #f5eee6;
     padding: 80px 0;
     color: #4a5568;
 }
 
-/* Скасовуємо flex загального контейнера для підвалу */
+
 footer .container {
     display: block; 
 }
@@ -404,9 +403,7 @@ footer .container {
     color: #718096;
 }
 
-/* ==========================================
-   ABOUT PAGE
-   ========================================== */
+
 
 /* Hero */
 .about-hero {
