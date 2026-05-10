@@ -14,7 +14,7 @@
 </head>
 <body>
 
-<!-- NAV -->
+<!-- хедер -->
 <header>
   <div class="container">
     <div class="logo">
@@ -100,7 +100,7 @@
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
   import { getFirestore, collection, addDoc, query, where, orderBy, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
-  // 🔧 ЗАМІНИ ЦЕ НА СВІЙ КОНФІГ З FIREBASE CONSOLE
+  
   const firebaseConfig = {
     apiKey: "AIzaSyASAJJF6axNuETtK19auQUrVdPltCK0bGQ",
     authDomain: "petstopmap-72132.firebaseapp.com",
@@ -113,7 +113,7 @@
   const app = initializeApp(firebaseConfig);
   const db  = getFirestore(app);
 
-  // Робимо db доступним глобально
+  
   window._firebaseDb         = db;
   window._fbCollection       = collection;
   window._fbAddDoc           = addDoc;
@@ -125,7 +125,7 @@
   window.dispatchEvent(new Event('firebaseReady'));
 </script>
 <script>
-// Автоматично визначаємо висоту хедера
+
 function fixLayout() {
   const header = document.querySelector('header');
   const layout = document.querySelector('.layout');
@@ -903,7 +903,7 @@ function renderCards() {
 
   document.getElementById('countDisplay').textContent = count;
 
-  // ── EMPTY STATE ──
+  
   if (count === 0) {
     list.style.display = 'none';
     const trimmed = query.trim();
@@ -925,7 +925,7 @@ function clearSearch() {
   renderCards();
 }
 
-// ── REVIEWS (Firebase Firestore) ──
+
 const avatarColors = [
   {bg:'#E1F5EE',text:'#0F6E56'},{bg:'#EEEDFE',text:'#534AB7'},
   {bg:'#FAECE7',text:'#993C1D'},{bg:'#E6F1FB',text:'#185FA5'},
@@ -1196,20 +1196,19 @@ setTimeout(() => fitVisibleMarkers('all'), 200);
 
 <script>
   document.addEventListener("DOMContentLoaded", function() {
-    // 1. Отримуємо параметри з URL (наприклад, ?type=cafe)
+   
     const urlParams = new URLSearchParams(window.location.search);
     const typeFromUrl = urlParams.get('type');
 
     if (typeFromUrl) {
-      // 2. Шукаємо кнопку фільтра, яка має відповідний data-type
+      
       const targetButton = document.querySelector(`.filter-btn[data-type="${typeFromUrl}"]`);
 
       if (targetButton) {
-        // 3. Викликаємо вашу функцію фільтрації
-        // Передаємо тип і саму кнопку, щоб вона стала активною (зеленою)
+        
         setFilter(typeFromUrl, targetButton);
         
-        // Додатково прокрутимо фільтри до цієї кнопки, якщо їх багато
+        
         targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
       }
     }
